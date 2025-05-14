@@ -1,17 +1,24 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'S3 Website para aplicación React generada con Vite. Incluye política pública de solo lectura.'
+Description: 'S3 Website para aplicación React generada con Vite. Compatible con ObjectOwnership BucketOwnerEnforced.'
 
 Parameters:
   BucketName:
     Type: String
-    Description: 'Nombre único del bucket (obligatoriamente en minúsculas y sin caracteres especiales)'
+    Description: 'Nombre único del bucket (en minúsculas, sin caracteres especiales)'
 
 Resources:
   ReactSiteBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Ref BucketName
-      AccessControl: PublicRead
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced   # Evita conflictos con ACLs
+      PublicAccessBlockConfiguration:              # Permitir acceso público controlado por la policy
+        BlockPublicAcls: false
+        IgnorePublicAcls: false
+        BlockPublicPolicy: false
+        RestrictPublicBuckets: false
       WebsiteConfiguration:
         IndexDocument: index.html
         ErrorDocument: index.html

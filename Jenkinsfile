@@ -51,10 +51,11 @@ pipeline {
             steps {
                 sh 'npm run build'
                 archiveArtifacts artifacts: 'dist/**/*', fingerprint: true
+                stash name: 'react-dist', includes: 'dist/**'
             }
         }
 
-        stage('Crear/Actualizar infraestructura S3') {
+        stage('Crear/Actualizar infraestructura S3') { {
             when { expression { return env.BUCKET_NAME?.trim() } }
             steps {
                 withCredentials([
@@ -77,6 +78,7 @@ pipeline {
 
         stage('Sincronizar artefactos a S3') {
             steps {
+                unstash 'react-dist'
                 withCredentials([
                     string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
                     string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
@@ -90,6 +92,16 @@ pipeline {
                 }
             }
         }
+    
+    post {
+        success {
+            echo "✅ Despliegue exitoso en https://${env.BUCKET_NAME}.s3-website-${env.AWS_REGION}.amazonaws.com"
+        }
+        failure {
+            echo '❌ El pipeline falló.'
+        }
+    }
+}
     }
 
     post {

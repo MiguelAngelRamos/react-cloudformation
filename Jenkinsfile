@@ -2,10 +2,10 @@ pipeline {
     agent any
 
     environment {
-        BUCKET_NAME   = 'mi-react-bucket-demo'   // 🔄  Cambia a un nombre S3 único (solo minúsculas, sin guiones al final)
-        STACK_NAME    = 'ReactSiteInfra'         // Nombre de la stack CloudFormation
-        AWS_REGION    = 'us-east-1'              // Región donde resides el bucket
-        NODE_IMG      = 'node:18'         // Imagen Node para las etapas de build/test
+        BUCKET_NAME   = 'mi-react-bucket-demo'
+        STACK_NAME    = 'ReactSiteInfra'
+        AWS_REGION    = 'us-east-1'
+        NODE_IMG      = 'node:18'
     }
 
     options {
@@ -55,7 +55,7 @@ pipeline {
             }
         }
 
-        stage('Crear/Actualizar infraestructura S3') { {
+        stage('Crear/Actualizar infraestructura S3') {
             when { expression { return env.BUCKET_NAME?.trim() } }
             steps {
                 withCredentials([
@@ -92,16 +92,6 @@ pipeline {
                 }
             }
         }
-    
-    post {
-        success {
-            echo "✅ Despliegue exitoso en https://${env.BUCKET_NAME}.s3-website-${env.AWS_REGION}.amazonaws.com"
-        }
-        failure {
-            echo '❌ El pipeline falló.'
-        }
-    }
-}
     }
 
     post {

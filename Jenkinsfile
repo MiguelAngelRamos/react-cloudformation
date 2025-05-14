@@ -1,0 +1,103 @@
+pipeline {
+    agent any
+
+    environment {
+        BUCKET_NAME   = 'mi-react-bucket-demo'   // 🔄  Cambia a un nombre S3 único (solo minúsculas, sin guiones al final)
+        STACK_NAME    = 'ReactSiteInfra'         // Nombre de la stack CloudFormation
+        AWS_REGION    = 'us-east-1'              // Región donde resides el bucket
+        NODE_IMG      = 'node:18-alpine'         // Imagen Node para las etapas de build/test
+    }
+
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Instalar dependencias') {
+            agent {
+                docker { image env.NODE_IMG; args '-u node' }
+            }
+            steps {
+                sh 'npm ci'
+            }
+        }
+
+        stage('Lint + Tests') {
+            agent {
+                docker { image env.NODE_IMG; args '-u node' }
+            }
+            steps {
+                sh 'npm run lint'
+                sh 'npm run test -- --run'
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: 'junit.xml'
+                }
+            }
+        }
+
+        stage('Build') {
+            agent {
+                docker { image env.NODE_IMG; args '-u node' }
+            }
+            steps {
+                sh 'npm run build'
+                archiveArtifacts artifacts: 'dist/**/*', fingerprint: true
+            }
+        }
+
+        stage('Crear/Actualizar infraestructura S3') {
+            when { expression { return env.BUCKET_NAME?.trim() } }
+            steps {
+                withCredentials([
+                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    sh '''
+                        export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                        export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+                        aws cloudformation deploy \
+                          --region $AWS_REGION \
+                          --stack-name $STACK_NAME \
+                          --template-file infra/s3-react-site.yaml \
+                          --parameter-overrides BucketName=$BUCKET_NAME \
+                          --capabilities CAPABILITY_NAMED_IAM
+                    '''
+                }
+            }
+        }
+
+        stage('Sincronizar artefactos a S3') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'aws-access-key', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    sh '''
+                        export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                        export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+                        echo "📤 Subiendo archivos a S3…"
+                        aws s3 sync dist/ s3://$BUCKET_NAME/ --delete --region $AWS_REGION
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Despliegue exitoso en https://${env.BUCKET_NAME}.s3-website-${env.AWS_REGION}.amazonaws.com"
+        }
+        failure {
+            echo '❌ El pipeline falló.'
+        }
+    }
+}

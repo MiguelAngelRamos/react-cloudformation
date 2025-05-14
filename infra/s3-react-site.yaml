@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'S3 Website para aplicación React generada con Vite. Incluye política pública de solo lectura.'
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: 'Nombre único del bucket (obligatoriamente en minúsculas y sin caracteres especiales)'
+
+Resources:
+  ReactSiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      AccessControl: PublicRead
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: index.html
+
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ReactSiteBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: PublicReadGetObject
+            Effect: Allow
+            Principal: '*'
+            Action: 's3:GetObject'
+            Resource: !Sub '${ReactSiteBucket.Arn}/*'
+
+Outputs:
+  WebsiteURL:
+    Description: 'URL del sitio web (endpoint S3 Website)'
+    Value: !GetAtt ReactSiteBucket.WebsiteURL

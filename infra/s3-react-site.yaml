@@ -4,7 +4,7 @@ Description: 'S3 Website para aplicación React generada con Vite. Compatible co
 Parameters:
   BucketName:
     Type: String
-    Description: 'Nombre único del bucket (en minúsculas, sin caracteres especiales)'
+    Description: 'Plantilla de CloudFormation para crear un bucket S3 configurado como sitio web estático. Compatible con ObjectOwnership BucketOwnerEnforced.'
 
 Resources:
   ReactSiteBucket:

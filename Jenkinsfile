@@ -5,7 +5,7 @@ pipeline {
         BUCKET_NAME   = 'mi-react-bucket-demo'   // 🔄  Cambia a un nombre S3 único (solo minúsculas, sin guiones al final)
         STACK_NAME    = 'ReactSiteInfra'         // Nombre de la stack CloudFormation
         AWS_REGION    = 'us-east-1'              // Región donde resides el bucket
-        NODE_IMG      = 'node:18-alpine'         // Imagen Node para las etapas de build/test
+        NODE_IMG      = 'node:18'         // Imagen Node para las etapas de build/test
     }
 
     options {
@@ -22,7 +22,7 @@ pipeline {
 
         stage('Instalar dependencias') {
             agent {
-                docker { image env.NODE_IMG; args '-u node' }
+                docker { image env.NODE_IMG; args '-u root' }
             }
             steps {
                 sh 'npm ci'
@@ -31,7 +31,7 @@ pipeline {
 
         stage('Lint + Tests') {
             agent {
-                docker { image env.NODE_IMG; args '-u node' }
+                docker { image env.NODE_IMG; args '-u root' }
             }
             steps {
                 sh 'npm run lint'
@@ -46,7 +46,7 @@ pipeline {
 
         stage('Build') {
             agent {
-                docker { image env.NODE_IMG; args '-u node' }
+                docker { image env.NODE_IMG; args '-u root' }
             }
             steps {
                 sh 'npm run build'
